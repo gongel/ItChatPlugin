@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-import re
+import  re
 from email import encoders
 from email.header import Header
 from email.mime.application import MIMEApplication
@@ -62,11 +62,12 @@ def SendMail(filename,MessageSource,FromUserName,FileSize,CreatTime):
     #     # 添加到MIMEMultipart:
     #     msg.attach(mime)
 
-    # 添加附件方法二（如果文件名为中文，会出现乱码）
+    # 添加附件方法二
     with open(filename,'rb') as f:
         mime=MIMEApplication(f.read())
-        mime.add_header('Content-Disposition', 'attachment', filename=('gbk','',filename))#只能gbk，utf-8都不行
-        # mime.add_header('Content-Disposition', 'attachment', filename=filename)
+        # mime.add_header('Content-Disposition', 'attachment', filename=('gbk','',filename))   gbk,utf-8,unicode遇到中文直接报错
+        # mime.add_header('Content-Disposition', 'attachment', filename=filename)#中文名 tcmime.2344.2546.20297.bin
+        mime.add_header('Content-Disposition', 'attachment', filename="%s"%Header(filename,'utf-8').encode())#成功
         msg.attach(mime)
 
     # 登录并发送邮件
@@ -77,7 +78,7 @@ def SendMail(filename,MessageSource,FromUserName,FileSize,CreatTime):
         s.login(sender, passWord)
         # 给receivers列表中的联系人逐个发送邮件
         for item in receivers:
-            msg['To'] = to = _format_addr(item)
+            msg['To'] = to =_format_addr(item)
             s.sendmail(sender, to, msg.as_string())
             # print('Success!')
         s.quit()
@@ -88,21 +89,18 @@ def SendMail(filename,MessageSource,FromUserName,FileSize,CreatTime):
 @itchat.msg_register([ATTACHMENT],isFriendChat=True,isGroupChat=True)
 def download_files_and_forward(msg):
     msg.download(msg.fileName)
-    r=re.match('(@@)(.*)',msg['FromUserName'])
+    r = re.match('(@@)(.*)', msg['FromUserName'])
     if r:
-        MessageSource='群聊'
-        SendMail(msg.fileName, MessageSource,msg['ActualNickName'] + '(' +
+        MessageSource = '群聊'
+        SendMail(msg.fileName, MessageSource, msg['ActualNickName'] + '(' +
                  itchat.search_chatrooms(userName=msg['FromUserName'])['NickName'] + ')', msg['FileSize'],
                  msg['CreateTime'])
 
     else:
-        MessageSource='个人'
+        MessageSource = '个人'
         SendMail(msg.fileName, MessageSource, itchat.search_friends(userName=msg['FromUserName'])['NickName'] + '(' +
                  itchat.search_friends(userName=msg['FromUserName'])['RemarkName'] + ')', msg['FileSize'],
                  msg['CreateTime'])
-    # print('FromUserName'+msg['FromUserName'],itchat.search_chatrooms(userName=msg['FromUserName'])['NickName'])
-    # print('ActualNickName'+msg['ActualNickName'])#为群显示的昵称
-    # print('ToUserName'+msg['ToUserName'],itchat.search_friends(userName=msg['ToUserName']))
 
-itchat.auto_login(hotReload=True)
+itchat.auto_login(enableCmdQR=2,picDir='/root/QR.png',hotReload=False)
 itchat.run()
